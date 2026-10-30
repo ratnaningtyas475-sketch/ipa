@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super IPA Quiz Bros</title>
+    <!-- Tailwind CSS untuk Layout -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts untuk font retro 8-bit -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <!-- Tone.js untuk efek suara sintesis 8-bit -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #222;
+            color: #fff;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        /* Container Game ala Retro */
+        #game-container {
+            width: 100%;
+            max-width: 800px;
+            height: 100vh;
+            max-height: 600px;
+            background-color: #5c94fc; /* Warna langit retro */
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            border: 4px solid #000;
+        }
+
+        /* Tanah / Ground */
+        .ground {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 15%;
+            background-color: #c84c0c; /* Warna tanah bata */
+            background-image: 
+                linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000),
+                linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000);
+            background-size: 32px 32px;
+            background-position: 0 0, 16px 16px;
+            border-top: 4px solid #000;
+            z-index: 10;
+        }
+
+        /* Awan */
+        .cloud {
+            position: absolute;
+            background: #fff;
+            border-radius: 50px;
+            opacity: 0.8;
+            box-shadow: 4px 4px 0 #000;
+        }
+
+        /* Karakter (Player) */
+        #player {
+            position: absolute;
+            bottom: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 48px;
+            height: 48px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill="%23d82800" d="M4 0h6v2H4z"/><path fill="%23887000" d="M2 2h8v2H2z"/><path fill="%23f8b800" d="M10 2h2v2h-2z"/><path fill="%23887000" d="M0 4h2v2H0zm4 0h4v2H4zm6 0h2v2h-2z"/><path fill="%23f8b800" d="M2 4h2v2H2zm8 0h2v2h-2z"/><path fill="%23d82800" d="M2 6h8v2H2zm10 0h2v2h-2z"/><path fill="%23007800" d="M0 8h4v2H0zm8 0h4v2H8zm-4 2h4v4H4z"/><path fill="%23d82800" d="M4 8h4v2H4zM0 10h4v2H0zm12 0h4v2h-4zM0 14h6v2H0zm10 0h6v2h-6z"/></svg>');
+            background-size: cover;
+            z-index: 20;
+            transition: bottom 0.2s ease-out, left 0.3s ease-in-out;
+        }
+        
+        .jump {
+            animation: jumpAnim 0.5s ease-in-out;
+        }
+
+        @keyframes jumpAnim {
+            0% { bottom: 15%; }
+            50% { bottom: 40%; }
+            100% { bottom: 15%; }
+        }
+
+        /* Koin Animasi */
+        .coin {
+            position: absolute;
+            width: 24px;
+            height: 32px;
+            background-color: #f8b800;
+            border: 2px solid #000;
+            border-radius: 50%;
+            z-index: 15;
+            opacity: 0;
+        }
+
+        @keyframes coinPop {
+            0% { transform: translateY(0); opacity: 1; }
+            50% { transform: translateY(-50px); opacity: 1; }
+            100% { transform: translateY(-20px); opacity: 0; }
+        }
+
+        /* UI Elements */
+        .pixel-btn {
+            background-color: #f8b800;
+            color: #000;
+            border: 4px solid #000;
+            padding: 10px 20px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: inset -4px -4px 0px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        .pixel-btn:active {
+            transform: scale(0.95);
+            box-shadow: inset 4px 4px 0px rgba(0,0,0,0.2);
+        }
+        .pixel-btn:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Question Box */
+        .question-box {
+            background-color: rgba(0, 0, 0, 0.8);
+            border: 4px solid #fff;
+            padding: 15px;
+            font-size: 10px;
+            line-height: 1.5;
+            min-height: 80px;
+            margin-bottom: 10px;
+        }
+
+        /* Option Blocks (Bata Tanya) */
+        .option-block {
+            background-color: #c84c0c;
+            border: 4px solid #000;
+            border-radius: 4px;
+            color: #fff;
+            padding: 12px;
+            font-size: 9px;
+            text-align: left;
+            cursor: pointer;
+            position: relative;
+            box-shadow: inset -4px -4px 0px rgba(0,0,0,0.3), inset 4px 4px 0px rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+        }
+        
+        .option-block:active {
+            transform: translateY(2px);
+        }
+
+        .option-block span.letter {
+            background-color: #f8b800;
+            color: #000;
+            padding: 4px;
+            margin-right: 10px;
+            border: 2px solid #000;
+            font-size: 8px;
+        }
+
+        .bounce {
+            animation: bounceBlock 0.3s ease;
+        }
+
+        @keyframes bounceBlock {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0); }
+        }
+
+        /* Utility */
+        .hidden { display: none !important; }
+        
+        @media (min-width: 640px) {
+            .question-box { font-size: 12px; }
+            .option-block { font-size: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- Dekorasi Background -->
+    <div class="cloud" style="width: 60px; height: 20px; top: 10%; left: 10%;"></div>
+    <div class="cloud" style="width: 80px; height: 25px; top: 20%; left: 70%;"></div>
+    <div class="cloud" style="width: 50px; height: 18px; top: 5%; left: 40%;"></div>
+    <div class="ground"></div>
+
+    <!-- Karakter -->
+    <div id="player" class="hidden"></div>
+    <div id="coin-effect" class="coin hidden"></div>
+
+    <!-- MAIN MENU -->
+    <div id="screen-menu" class="absolute inset-0 flex flex-col items-center justify-center z-30 bg-black/60 p-4">
+        <h1 class="text-3xl sm:text-4xl text-yellow-400 text-center mb-2" style="text-shadow: 4px 4px #d82800;">SUPER IPA</h1>
+        <h2 class="text-xl sm:text-2xl text-white text-center mb-8" style="text-shadow: 2px 2px #000;">QUIZ BROS</h2>
+        
+        <p class="text-xs text-center mb-6 leading-relaxed text-gray-200">
+            Pilih World untuk memulai ujian!<br>Setiap World berisi 20 Soal HOTS Kelas 9.
+        </p>
+
+        <div class="flex flex-col gap-4 w-full max-w-xs">
+            <button class="pixel-btn" onclick="startGame(0)">WORLD 1:<br>Pertumbuhan & Perkembangan</button>
+            <button class="pixel-btn" onclick="startGame(1)">WORLD 2:<br>Sistem Koordinasi</button>
+            <button class="pixel-btn" onclick="startGame(2)">WORLD 3:<br>Tekanan</button>
+        </div>
+    </div>
+
+    <!-- QUIZ SCREEN -->
+    <div id="screen-quiz" class="hidden absolute inset-0 flex flex-col z-30 p-4 pt-6">
+        <!-- HUD -->
+        <div class="flex justify-between items-start text-xs sm:text-sm mb-2" style="text-shadow: 2px 2px #000;">
+            <div>
+                <p class="text-yellow-400">WORLD</p>
+                <p id="hud-world">1-1</p>
+            </div>
+            <div>
+                <p class="text-yellow-400">SOAL</p>
+                <p><span id="hud-qnum">1</span>/20</p>
+            </div>
+            <div class="text-right">
+                <p class="text-yellow-400">SCORE</p>
+                <p id="hud-score">000000</p>
+            </div>
+        </div>
+
+        <!-- Question Area -->
+        <div class="question-box" id="question-text">
+            Pertanyaan akan muncul di sini...
+        </div>
+
+        <!-- Options -->
+        <div class="flex flex-col gap-2 mt-auto mb-16 relative" id="options-container">
+            <!-- Pilihan akan di-generate via JS -->
+        </div>
+    </div>
+
+    <!-- END SCREEN (NAMA & SCORE) -->
+    <div id="screen-end" class="hidden absolute inset-0 flex flex-col items-center justify-center z-40 bg-black/90 p-4">
+        <h2 class="text-2xl text-yellow-400 mb-4">COURSE CLEAR!</h2>
+        <p class="text-sm mb-2">Skor Akhir Kamu:</p>
+        <p class="text-4xl text-white mb-6" id="final-score">0</p>
+        
+        <div class="w-full max-w-xs flex flex-col gap-4">
+            <label class="text-xs text-center text-gray-300">Masukkan Namamu:</label>
+            <input type="text" id="player-name" class="p-3 text-black font-bold text-center border-4 border-yellow-400 rounded-none outline-none" placeholder="NAMA SISWA" maxlength="15">
+            <button class="pixel-btn" onclick="saveScore()">SIMPAN SKOR</button>
+        </div>
+    </div>
+
+    <!-- LEADERBOARD SCREEN -->
+    <div id="screen-leaderboard" class="hidden absolute inset-0 flex flex-col items-center justify-center z-50 bg-black/95 p-4">
+        <h2 class="text-2xl text-yellow-400 mb-6">LEADERBOARD</h2>
+        <div class="bg-gray-800 border-4 border-white w-full max-w-sm p-4 h-64 overflow-y-auto mb-6">
+            <table class="w-full text-xs text-left" id="leaderboard-table">
+                <thead>
+                    <tr class="text-yellow-400 border-b border-gray-600">
+                        <th class="pb-2">NAMA</th>
+                        <th class="pb-2 text-right">SKOR</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                    <!-- Data via JS -->
+                </tbody>
+            </table>
+        </div>
+        <button class="pixel-btn" onclick="returnToMenu()">KEMBALI KE MENU</button>
+    </div>
+
+</div>
+
+<script>
+    /* =========================================
+       BANK SOAL HOTS (60 Soal)
+       ========================================= */
+    const questionBank = [
+        // WORLD 1: PERTUMBUHAN & PERKEMBANGAN (20 SOAL)
+        [
+            { q: "Seorang petani memotong ujung pucuk tanaman cabainya (membuang meristem apikal). Beberapa minggu kemudian, tanamannya menjadi lebih rimbun ke samping. Secara fisiologis, hal ini disebabkan oleh...", c: ["Aktivitas hormon sitokinin meningkat karena hilangnya auksin di ujung", "Hormon giberelin berfokus memanjangkan batang lateral", "Hormon asam absisat merangsang dormansi pucuk", "Gas etilen mempercepat pematangan daun lateral"], a: 0 },
+            { q: "Andi menanam dua biji kacang hijau. Pot A diletakkan di dalam lemari gelap, Pot B di halaman yang terkena cahaya matahari. Setelah 5 hari, kecambah di Pot A jauh lebih tinggi tapi pucat dan lemah. Fenomena ini disebut etiolasi, yang terjadi karena...", c: ["Cahaya matahari merusak klorofil pada Pot B", "Hormon auksin pada Pot A tidak terurai oleh cahaya sehingga sel memanjang ekstrem", "Pot A mendapat lebih banyak nutrisi dari kelembapan lemari", "Hormon giberelin pada Pot B menghambat pemanjangan sel"], a: 1 },
+            { q: "Fase embrionik pada hewan mengalami proses gastrulasi dimana terbentuk tiga lapisan (ektoderm, mesoderm, endoderm). Jika terjadi mutasi yang menyebabkan lapisan mesoderm gagal berkembang, sistem organ apa yang dipastikan tidak akan terbentuk pada hewan tersebut?", c: ["Sistem saraf dan kulit", "Sistem pencernaan dan pernapasan", "Rangka, otot, dan peredaran darah", "Hanya sistem ekskresi"], a: 2 },
+            { q: "Katak dan belalang sama-sama mengalami metamorfosis. Namun, secara ekologis dan morfologis, metamorfosis katak sangat berbeda karena...", c: ["Katak mengalami pergantian kulit (ekdisis), belalang tidak", "Tahap muda katak (berudu) hidup di habitat dan menggunakan organ respirasi yang sama sekali berbeda dari dewasanya", "Belalang memiliki tahap pupa (kepompong) sebelum dewasa", "Katak muda langsung memiliki paru-paru kecil"], a: 1 },
+            { q: "Pohon jati di daerah tropis memiliki 'lingkaran tahun' yang terlihat jelas jika batangnya dipotong melintang. Lingkaran ini terbentuk akibat...", c: ["Perbedaan kecepatan pembelahan kambium vaskuler pada musim hujan dan kemarau", "Tumpukan zat lignin yang menempel setiap tahun dari luar batang", "Pengelupasan kulit batang secara berkala setiap tahun", "Aktivitas xilem sekunder yang mati dan membentuk rongga"], a: 0 },
+            { q: "Buah pisang yang masih hijau jika diletakkan di dalam kantong kertas tertutup bersama satu buah apel yang sudah matang akan lebih cepat menguning. Hal ini terjadi akibat paparan hormon...", c: ["Auksin dari pisang", "Gas etilen dari apel", "Giberelin dari udara", "Sitokinin dari kertas"], a: 1 },
+            { q: "Pada perkecambahan epigeal (seperti pada kacang hijau), bagian yang memanjang dan mendorong kotiledon naik ke atas permukaan tanah adalah...", c: ["Radikula", "Plumula", "Hipokotil", "Epikotil"], a: 2 },
+            { q: "Ulat sutera memiliki nilai ekonomi tinggi pada salah satu fase hidupnya. Jika peternak ingin memaksimalkan panen benang sutera, hormon apa yang sebaiknya diatur untuk memperpanjang masa larva sebelum menjadi pupa?", c: ["Hormon Ekdison", "Hormon Otak (Brain Hormone)", "Juvenile Hormone (JH)", "Tiroksin"], a: 2 },
+            { q: "Sebuah tanaman mengalami mutasi sehingga akar utamanya kehilangan tudung akar (kaliptra). Dampak paling fatal bagi kelangsungan hidup tanaman tersebut adalah...", c: ["Akar tidak dapat menyerap air sama sekali", "Meristem apikal akar rentan rusak saat menembus tanah keras", "Tanaman tidak bisa membentuk akar cabang", "Hormon auksin tidak dapat diproduksi di daun"], a: 1 },
+            { q: "Manusia mengalami masa pubertas yang ditandai dengan ciri kelamin sekunder. Pertumbuhan fisik yang pesat pada masa ini secara langsung paling dipengaruhi oleh sinergi antara hormon...", c: ["Somatotropin (Growth Hormone) dan Hormon Seksual (Testosteron/Estrogen)", "Tiroksin dan Insulin", "Adrenalin dan Progesteron", "Oksitosin dan Prolaktin"], a: 0 },
+            { q: "Dalam kultur jaringan, untuk memacu pertumbuhan eksplan (potongan jaringan) agar membentuk kalus lalu menjadi tunas dan akar, ilmuwan memanipulasi rasio dua hormon yaitu...", c: ["Auksin dan Sitokinin", "Asam Absisat dan Gas Etilen", "Giberelin dan Kalin", "Florigen dan Traumalin"], a: 0 },
+            { q: "Metagenesis pada tumbuhan paku (Pteridophyta) menunjukkan pergiliran keturunan. Fase yang dominan, berumur panjang, dan sering kita lihat sebagai 'tanaman paku' adalah fase...", c: ["Gametofit yang haploid (n)", "Sporofit yang diploid (2n)", "Protalium yang diploid (2n)", "Sporangium yang haploid (n)"], a: 1 },
+            { q: "Kekurangan asupan iodium pada masa kanak-kanak dapat menyebabkan kretinisme (kekerdilan fisik dan mental). Hal ini terkait erat dengan gangguan produksi hormon...", c: ["Somatotropin", "Tiroksin", "Kalsitonin", "Glukagon"], a: 1 },
+            { q: "Pada biji jarak (dikotil) dan jagung (monokotil), tempat penyimpanan cadangan makanan utama yang digunakan embrio saat awal perkecambahan (sebelum daun sejati fotosintesis) secara berurutan adalah...", c: ["Kotiledon dan Endosperma", "Endosperma dan Kotiledon", "Radikula dan Plumula", "Koleoptil dan Koleoriza"], a: 0 },
+            { q: "Hormon kalin dibedakan menjadi rizokalin, kaulokalin, filokalin, dan antokalin. Jika suatu tanaman sulit berbunga meski sudah dewasa, hormon yang kemungkinan produksinya terhambat adalah...", c: ["Kaulokalin", "Rizokalin", "Filokalin", "Antokalin"], a: 3 },
+            { q: "Proses perkembangan dari zigot melalui tahap morula, blastula, dan gastrula disebut fase embrionik. Pada tahap blastula, ciri utamanya adalah...", c: ["Terbentuknya bola sel padat", "Terbentuknya rongga berisi cairan (blastosol)", "Terbentuknya tiga lapisan lembaga", "Organogenesis mulai terjadi"], a: 1 },
+            { q: "Grafik pertumbuhan suatu organisme umumnya berbentuk kurva sigmoid (huruf S). Fase di mana laju pertumbuhan mencapai titik maksimum sebelum akhirnya melambat disebut...", c: ["Fase Lag (persiapan)", "Fase Logaritma (eksponensial)", "Fase Stasioner", "Fase Kematian"], a: 1 },
+            { q: "Tanaman yang tumbuh merambat pada pagar menunjukkan gerak tigmotropisme. Pertumbuhan sel pada sisi sulur yang TIDAK menyentuh pagar akan...", c: ["Lebih lambat dibanding sisi yang menyentuh", "Sama cepat dengan sisi yang menyentuh", "Lebih cepat dibanding sisi yang menyentuh karena penumpukan auksin", "Berhenti tumbuh sama sekali"], a: 2 },
+            { q: "Apa perbedaan mendasar antara pertumbuhan dan perkembangan?", c: ["Pertumbuhan bersifat kualitatif, perkembangan kuantitatif", "Pertumbuhan tidak dapat diukur, perkembangan dapat diukur", "Pertumbuhan bersifat irreversibel (tidak bisa balik) dan kuantitatif, perkembangan kualitatif menuju kedewasaan", "Pertumbuhan hanya terjadi di embrio, perkembangan setelah lahir"], a: 2 },
+            { q: "Jika kulit pohon dikerat melingkar hingga ke bagian kayu (mencapai floem), pohon akan mati beberapa waktu kemudian karena...", c: ["Air dari akar tidak sampai ke daun", "Hasil fotosintesis tidak dapat disalurkan ke akar, sehingga akar mati", "Hama lebih mudah masuk ke dalam batang", "Daun tidak mendapatkan oksigen"], a: 1 }
+        ],
+        // WORLD 2: KOORDINASI, REPRODUKSI, HOMEOSTASIS (20 SOAL)
+        [
+            { q: "Budi tidak sengaja menyentuh wajan panas, tangannya langsung ditarik mundur sebelum ia merasakan sakit. Jalur impuls saraf yang benar pada peristiwa gerak refleks ini adalah...", c: ["Reseptor -> Saraf Sensorik -> Otak -> Saraf Motorik -> Efektor", "Reseptor -> Saraf Motorik -> Sumsum Tulang Belakang -> Saraf Sensorik -> Efektor", "Reseptor -> Saraf Sensorik -> Sumsum Tulang Belakang -> Saraf Motorik -> Efektor", "Efektor -> Saraf Sensorik -> Otak -> Saraf Motorik -> Reseptor"], a: 2 },
+            { q: "Seseorang yang selesai makan nasi porsi besar akan mengalami lonjakan glukosa darah. Untuk menjaga homeostasis, pankreas merespon dengan...", c: ["Mensekresikan glukagon untuk memecah glikogen", "Mensekresikan insulin untuk mengubah glukosa menjadi glikogen di hati", "Menghasilkan adrenalin untuk membakar glukosa", "Meningkatkan produksi urine agar gula terbuang"], a: 1 },
+            { q: "Pada siklus menstruasi wanita, lonjakan hormon Luteinizing Hormone (LH) yang tajam pada pertengahan siklus (sekitar hari ke-14) memicu peristiwa krusial yaitu...", c: ["Menstruasi (peluruhan dinding rahim)", "Ovulasi (pelepasan sel telur dari ovarium)", "Penebalan endometrium secara masif", "Pertumbuhan folikel primer"], a: 1 },
+            { q: "Seorang pesenam mampu menjaga keseimbangan tubuhnya saat berjalan di atas balok titian. Bagian sistem saraf pusat yang paling berperan mengatur koordinasi dan keseimbangan gerakan ini adalah...", c: ["Otak Besar (Serebrum)", "Otak Kecil (Serebelum)", "Sumsum Lanjutan (Medula Oblongata)", "Hipotalamus"], a: 1 },
+            { q: "Dalam sistem reproduksi pria, sperma yang dihasilkan di testis membutuhkan tempat untuk pematangan dan penyimpanan sementara sebelum diejakulasikan. Saluran berkelok-kelok tempat pematangan ini disebut...", c: ["Vas Deferens", "Uretra", "Epididimis", "Vesikula Seminalis"], a: 2 },
+            { q: "Ketika tubuh manusia terpapar suhu dingin yang ekstrem, mekanisme homeostasis akan bekerja untuk menaikkan suhu tubuh dengan cara...", c: ["Vasodilatasi pembuluh darah kulit dan banyak berkeringat", "Vasokonstriksi (penyempitan) pembuluh darah kulit dan otot menggigil", "Menurunkan laju metabolisme sel", "Memperlebar pori-pori kulit"], a: 1 },
+            { q: "Penyakit diabetes insipidus ditandai dengan penderitanya yang selalu haus dan memproduksi urine dalam jumlah sangat banyak. Hal ini disebabkan oleh...", c: ["Kekurangan hormon insulin", "Kerusakan pada nefron ginjal", "Kekurangan Antidiuretic Hormone (ADH) dari kelenjar hipofisis", "Kelebihan hormon tiroksin"], a: 2 },
+            { q: "Obat bius (anestesi) lokal yang disuntikkan oleh dokter gigi bekerja dengan cara...", c: ["Memblokir reseptor nyeri di otak besar", "Mencegah potensial aksi pada saraf sensorik di area gigi agar impuls nyeri tidak sampai ke otak", "Membunuh saraf di sekitar gigi secara permanen", "Menghentikan aliran darah ke area gusi"], a: 1 },
+            { q: "Plasenta pada masa kehamilan tidak hanya berfungsi menyalurkan nutrisi dari ibu ke janin, tetapi juga berfungsi sebagai kelenjar endokrin sementara yang menghasilkan hormon...", c: ["HCG, Estrogen, dan Progesteron", "FSH dan LH", "Oksitosin dan Prolaktin", "Testosteron dan Adrenalin"], a: 0 },
+            { q: "Mata dapat memfokuskan bayangan benda yang dekat maupun jauh agar tepat jatuh di retina. Kemampuan lensa mata untuk mencembung dan memipih ini disebut...", c: ["Adaptasi gelap-terang", "Titik buta", "Akomodasi mata", "Astigmatisme"], a: 2 },
+            { q: "Bagian dari telinga dalam yang berfungsi sebagai alat keseimbangan tubuh (mendeteksi posisi kepala) adalah...", c: ["Membran timpani", "Saluran Eustachius", "Koklea (Rumah Siput)", "Tiga saluran setengah lingkaran (Kanalis Semisirkularis)"], a: 3 },
+            { q: "Sistem saraf simpatik dan parasimpatik bekerja secara antagonis (berlawanan). Saat seseorang lari dikejar anjing, efek saraf simpatik yang terjadi adalah...", c: ["Denyut jantung melambat, pupil mengecil", "Denyut jantung meningkat, pencernaan terhambat, bronkus melebar", "Pencernaan meningkat, bronkus menyempit", "Kandung kemih kontraksi (ingin kencing)"], a: 1 },
+            { q: "Proses spermatogenesis menghasilkan 4 sel sperma fungsional dari satu spermatogonium. Sedangkan oogenesis pada wanita dari satu oogonium hanya menghasilkan...", c: ["4 ovum fungsional", "2 ovum fungsional dan 2 badan polar", "1 ovum fungsional dan 3 badan polar (polosit)", "Tidak menghasilkan ovum sebelum pubertas"], a: 2 },
+            { q: "Kelenjar buntu (endokrin) yang dijuluki sebagai 'Master of Gland' karena sekresinya mengatur kerja kelenjar endokrin lain di seluruh tubuh adalah...", c: ["Kelenjar Tiroid", "Kelenjar Adrenal", "Kelenjar Hipofisis (Pituitari)", "Kelenjar Pankreas"], a: 2 },
+            { q: "Pada alat reproduksi wanita, fertilisasi (pembuahan) sel telur oleh sperma secara normal terjadi di dalam...", c: ["Ovarium", "Tuba Fallopi (Oviduk)", "Uterus (Rahim)", "Vagina"], a: 1 },
+            { q: "Selubung mielin pada akson sel saraf berfungsi ganda, yaitu sebagai isolator dan mempercepat jalannya impuls. Celah akson yang tidak tertutup mielin disebut...", c: ["Dendrit", "Badan Sel", "Nodus Ranvier", "Sinapsis"], a: 2 },
+            { q: "Jika seseorang mengalami kerusakan parah pada bagian Medula Oblongata (sumsum lanjutan) akibat kecelakaan, fungsi tubuh manakah yang paling cepat terhenti dan mengancam nyawa?", c: ["Mengingat nama keluarga", "Pernapasan dan denyut jantung", "Penglihatan dan pendengaran", "Kemampuan menggerakkan kaki"], a: 1 },
+            { q: "Pil KB mencegah kehamilan umumnya dengan cara memasukkan hormon sintetis (estrogen dan progesteron) ke dalam tubuh wanita. Bagaimana mekanisme utamanya?", c: ["Membunuh sperma yang masuk", "Menebalkan dinding rahim secara permanen", "Menghambat sekresi FSH dan LH sehingga tidak terjadi ovulasi", "Menutup saluran Tuba Fallopi secara fisik"], a: 2 },
+            { q: "Penghantaran impuls dari satu neuron ke neuron lainnya melintasi celah sinapsis memerlukan zat kimia pembawa pesan yang disebut...", c: ["Neurotransmitter (misal: asetilkolin)", "Hormon", "Plasma darah", "Ion Kalsium"], a: 0 },
+            { q: "Homeostasis kalsium dalam darah sangat penting. Jika kadar kalsium darah turun (hipokalsemia), kelenjar paratiroid akan mengeluarkan hormon parathormon (PTH) yang merangsang...", c: ["Penyimpanan kalsium di tulang", "Pelepasan kalsium dari tulang ke darah", "Pembuangan kalsium melalui ginjal", "Penyerapan kalsium dihentikan di usus"], a: 1 }
+        ],
+        // WORLD 3: TEKANAN (20 SOAL)
+        [
+            { q: "Sebuah balok beton bermassa 100 kg dengan dimensi 2m x 1m x 0.5m diletakkan di atas tanah. Agar tekanan yang diberikan balok ke tanah paling BESAR, sisi mana yang harus dijadikan alas?", c: ["Sisi 2m x 1m (Luas 2 m2)", "Sisi 2m x 0.5m (Luas 1 m2)", "Sisi 1m x 0.5m (Luas 0.5 m2)", "Tekanannya sama di semua sisi"], a: 2 },
+            { q: "Hukum Pascal diterapkan pada dongkrak hidrolik. Jika luas penampang piston kecil 10 cm2 dan piston besar 100 cm2, gaya 50 N pada piston kecil akan menghasilkan gaya angkat pada piston besar sebesar...", c: ["5 N", "50 N", "500 N", "5000 N"], a: 2 },
+            { q: "Bendungan air raksasa selalu didesain dengan struktur dinding bagian bawah yang jauh lebih tebal dan kuat dibandingkan bagian atasnya. Alasan fisika paling tepat untuk desain ini adalah...", c: ["Bagian bawah harus menahan berat tanah di sekitarnya", "Tekanan hidrostatis air semakin besar seiring bertambahnya kedalaman (P = ρ.g.h)", "Mencegah perembesan air tanah", "Arus air di bawah lebih deras daripada di permukaan"], a: 1 },
+            { q: "Sebuah kapal selam berada di kedalaman 200 meter di bawah laut. Jika massa jenis air laut 1030 kg/m3 dan gravitasi 10 m/s2, berapa tekanan hidrostatis yang dialami dinding kapal? (abaikan tekanan udara luar)", c: ["2.060.000 Pascal", "206.000 Pascal", "20.600 Pascal", "2.060 Pascal"], a: 0 },
+            { q: "Kapal laut yang terbuat dari besi berat dapat mengapung di lautan. Berdasarkan Hukum Archimedes, hal ini mungkin terjadi karena...", c: ["Besi di laut menjadi ringan karena kadar garam tinggi", "Volume lambung kapal dibuat sangat besar sehingga gaya apung ke atas sebanding dengan berat total kapal", "Adanya mesin pendorong ke atas", "Air laut memiliki gaya magnet terhadap besi"], a: 1 },
+            { q: "Balon udara yang diisi udara panas dapat terbang membumbung ke langit. Konsep fisika utama yang mendasarinya adalah...", c: ["Hukum Boyle: Tekanan berbanding terbalik dengan volume", "Hukum Pascal: Tekanan diteruskan ke segala arah", "Hukum Archimedes: Massa jenis udara panas dalam balon lebih kecil dari udara dingin di luar, menghasilkan gaya angkat", "Tekanan hidrostatis atmosfer mendorong balon"], a: 2 },
+            { q: "Ketika kita mendaki gunung tinggi, kita sering merasa telinga berdenging dan napas menjadi lebih berat. Hal ini berhubungan dengan...", c: ["Tekanan udara atmosfer meningkat karena mendekati matahari", "Kadar oksigen bertambah namun paru-paru menyusut", "Tekanan udara atmosfer menurun seiring bertambahnya ketinggian (kerapatan udara berkurang)", "Suhu dingin membekukan saluran napas"], a: 2 },
+            { q: "Seseorang mengukur tekanan darahnya dengan tensimeter dan hasilnya 120/80 mmHg. Angka 120 menunjukkan...", c: ["Tekanan diastolik (jantung relaksasi)", "Tekanan sistolik (bilik jantung berkontraksi memompa darah)", "Kapasitas paru-paru", "Jumlah denyut jantung per menit"], a: 1 },
+            { q: "Pompa air manual (pompa sumur dangkal) bekerja dengan memanfaatkan ruang hampa parsial. Secara teoritis menggunakan tekanan udara luar, kedalaman maksimal air sumur yang bisa diisap murni oleh pompa ini di permukaan laut tidak bisa melebihi...", c: ["5 meter", "10,3 meter", "20 meter", "Tergantung kekuatan pompa sejauh apapun bisa"], a: 1 },
+            { q: "Pada sistem peredaran darah manusia, pembuluh kapiler memiliki luas penampang total yang jauh lebih besar daripada aorta. Sesuai prinsip tekanan dan aliran fluida, kecepatan aliran darah di kapiler menjadi...", c: ["Sangat cepat untuk mendistribusikan oksigen instan", "Sangat lambat, memungkinkan waktu yang cukup untuk pertukaran zat (O2, nutrisi) dengan sel", "Sama cepatnya dengan di aorta", "Berhenti total dan berbalik arah"], a: 1 },
+            { q: "Sebuah benda ditimbang di udara beratnya 50 N. Ketika dicelupkan seluruhnya ke dalam air, berat semunya menjadi 40 N. Berapa besar gaya ke atas (Gaya Archimedes) yang dialami benda tersebut?", c: ["10 N", "40 N", "50 N", "90 N"], a: 0 },
+            { q: "Pisau yang tajam lebih mudah digunakan untuk memotong daging daripada pisau tumpul dengan gaya dorong yang sama. Ini membuktikan bahwa...", c: ["Luas bidang sentuh kecil menghasilkan tekanan yang besar", "Luas bidang sentuh kecil menghasilkan tekanan yang kecil", "Pisau tajam mengurangi massa daging", "Gaya gesek pada pisau tajam bernilai nol"], a: 0 },
+            { q: "Naiknya air dari akar ke daun pada pohon yang tinggi dipengaruhi oleh beberapa faktor tekanan. Faktor yang timbul akibat penguapan air di daun disebut...", c: ["Daya tekan akar", "Kapilaritas batang", "Daya isap daun (transpirasi)", "Tekanan turgor"], a: 2 },
+            { q: "Dalam botol air mineral yang diberi 3 lubang bocor dari atas ke bawah, pancaran air dari lubang paling bawah akan menyemprot paling jauh. Kesimpulan dari fenomena ini adalah...", c: ["Tekanan air dipengaruhi oleh luas permukaan botol", "Tekanan hidrostatis berbanding lurus dengan kedalaman dari permukaan fluida", "Massa jenis air di bawah lebih kental", "Tekanan udara hanya menekan lubang bawah"], a: 1 },
+            { q: "Ban mobil yang kempes di pagi hari karena udara dingin, akan terlihat lebih mengeras pada siang hari yang panas tanpa ditambah angin. Sesuai teori kinetik gas (hukum Gay-Lussac/Boyle), hal ini karena...", c: ["Panas menambah massa udara", "Kenaikan suhu menyebabkan energi kinetik molekul udara meningkat sehingga tekanan gas ke dinding ban membesar", "Karet ban menyusut di siang hari", "Tekanan atmosfer siang hari lebih rendah"], a: 1 },
+            { q: "Mengapa orang yang menggunakan sepatu hak tinggi (stiletto) dapat merusak lantai kayu dibandingkan orang berbobot sama yang memakai sepatu kets?", c: ["Sepatu hak tinggi terbuat dari besi", "Luas penampang hak sangat kecil, sehingga menghasilkan tekanan yang sangat besar pada lantai", "Sepatu kets menyerap gaya berat total", "Gaya berat pemakai sepatu hak tinggi meningkat ganda"], a: 1 },
+            { q: "Dua cairan, A dan B, diukur pada kedalaman yang sama (h=2m). Jika massa jenis cairan A dua kali lipat massa jenis cairan B, maka tekanan hidrostatis cairan A adalah...", c: ["Sama dengan cairan B", "Setengah kali cairan B", "Dua kali lipat tekanan hidrostatis cairan B", "Empat kali lipat cairan B"], a: 2 },
+            { q: "Alat untuk mengukur tekanan gas dalam ruang tertutup disebut...", c: ["Barometer", "Manometer", "Higrometer", "Altimeter"], a: 1 },
+            { q: "Jika kita meminum air menggunakan sedotan, sebenarnya yang membuat air naik ke dalam sedotan dan masuk ke mulut kita adalah...", c: ["Mulut menarik air dengan gaya magnetik", "Paru-paru kita mendorong air", "Kita menurunkan tekanan udara di dalam sedotan, sehingga tekanan atmosfer luar mendorong air naik", "Kapilaritas sedotan plastik yang kuat"], a: 2 },
+            { q: "Sebuah benda melayang di dalam air (tidak mengapung dan tidak tenggelam). Kesimpulan yang benar mengenai benda tersebut adalah...", c: ["Massa jenis benda lebih besar dari massa jenis air", "Massa jenis benda lebih kecil dari massa jenis air", "Massa jenis benda SAMA dengan massa jenis air", "Benda tersebut tidak memiliki massa jenis"], a: 2 }
+        ]
+    ];
+
+    // Status Game
+    let currentWorld = 0;
+    let currentQuestions = [];
+    let currentQIndex = 0;
+    let score = 0;
+    let correctPerWorld = 0;
+    const SCORE_MULTIPLIER = 500; // Tiap soal 500 point
+
+    // Referensi DOM
+    const screens = {
+        menu: document.getElementById('screen-menu'),
+        quiz: document.getElementById('screen-quiz'),
+        end: document.getElementById('screen-end'),
+        leaderboard: document.getElementById('screen-leaderboard')
+    };
+    const player = document.getElementById('player');
+    const coinEffect = document.getElementById('coin-effect');
+    const optionsContainer = document.getElementById('options-container');
+    const questionText = document.getElementById('question-text');
+    
+    // Synthesizer Audio (Tone.js)
+    let synth;
+    let audioInitialized = false;
+
+    async function initAudio() {
+        if (!audioInitialized) {
+            await Tone.start();
+            synth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: "square" }
+            }).toDestination();
+            synth.volume.value = -10;
+            audioInitialized = true;
+        }
+    }
+
+    function playCoinSound() {
+        if(!synth) return;
+        const now = Tone.now();
+        synth.triggerAttackRelease("B5", "32n", now);
+        synth.triggerAttackRelease("E6", "8n", now + 0.1);
+    }
+
+    function playBumpSound() {
+        if(!synth) return;
+        synth.triggerAttackRelease("A2", "16n");
+    }
+
+    function playClearSound() {
+        if(!synth) return;
+        const now = Tone.now();
+        synth.triggerAttackRelease("C4", "8n", now);
+        synth.triggerAttackRelease("E4", "8n", now + 0.15);
+        synth.triggerAttackRelease("G4", "8n", now + 0.3);
+        synth.triggerAttackRelease("C5", "4n", now + 0.45);
+    }
+
+    // Navigasi Layar
+    function showScreen(screenName) {
+        Object.values(screens).forEach(s => s.classList.add('hidden'));
+        screens[screenName].classList.remove('hidden');
+    }
+
+    function startGame(worldIndex) {
+        initAudio(); // Inisialisasi audio setelah interaksi user (klik)
+        currentWorld = worldIndex;
+        // Ambil clone dari soal agar tidak merubah array asli
+        currentQuestions = [...questionBank[worldIndex]];
+        currentQIndex = 0;
+        score = 0;
+        correctPerWorld = 0;
+
+        document.getElementById('hud-world').innerText = (worldIndex + 1) + "-1";
+        updateHUD();
+        
+        showScreen('quiz');
+        player.classList.remove('hidden');
+        renderQuestion();
+    }
+
+    function updateHUD() {
+        document.getElementById('hud-qnum').innerText = currentQIndex + 1;
+        document.getElementById('hud-score').innerText = score.toString().padStart(6, '0');
+    }
+
+    function renderQuestion() {
+        if (currentQIndex >= currentQuestions.length) {
+            endGame();
+            return;
+        }
+
+        const qData = currentQuestions[currentQIndex];
+        questionText.innerHTML = qData.q;
+        optionsContainer.innerHTML = '';
+        
+        // Posisikan player di tengah
+        player.style.left = '50%';
+        player.classList.remove('jump');
+
+        const letters = ['A', 'B', 'C', 'D'];
+        
+        qData.c.forEach((choice, index) => {
+            const btn = document.createElement('div');
+            btn.className = 'option-block';
+            // Hitung posisi horizontal (untuk animasi player lompat)
+            // Layout: 4 blok vertikal, player akan melompat ke arah blok yang diklik
+            btn.innerHTML = `<span class="letter">${letters[index]}</span> <span>${choice}</span>`;
+            
+            btn.onclick = () => handleAnswer(index, btn);
+            optionsContainer.appendChild(btn);
+        });
+        
+        updateHUD();
+    }
+
+    function handleAnswer(selectedIndex, btnElement) {
+        // Disable semua tombol agar tidak dobel klik
+        const allBtns = optionsContainer.querySelectorAll('.option-block');
+        allBtns.forEach(b => b.style.pointerEvents = 'none');
+
+        const qData = currentQuestions[currentQIndex];
+        const isCorrect = selectedIndex === qData.a;
+
+        // Animasi Blok & Player
+        btnElement.classList.add('bounce');
+        player.classList.remove('jump');
+        // Force reflow
+        void player.offsetWidth;
+        player.classList.add('jump');
+
+        if (isCorrect) {
+            setTimeout(() => {
+                playCoinSound();
+                score += SCORE_MULTIPLIER;
+                correctPerWorld++;
+                updateHUD();
+                
+                // Tampilkan efek koin dari blok
+                const rect = btnElement.getBoundingClientRect();
+                coinEffect.style.left = (rect.left + rect.width/2 - 12) + 'px';
+                coinEffect.style.top = rect.top + 'px';
+                coinEffect.classList.remove('hidden');
+                coinEffect.style.animation = 'coinPop 0.5s ease forwards';
+                
+                setTimeout(() => coinEffect.classList.add('hidden'), 500);
+            }, 250); // delay bunyi pas player nyundul
+            btnElement.style.backgroundColor = '#007800'; // Hijau benar
+        } else {
+            setTimeout(playBumpSound, 250);
+            btnElement.style.backgroundColor = '#d82800'; // Merah salah
+            // Tampilkan yang benar
+            allBtns[qData.a].style.backgroundColor = '#007800';
+        }
+
+        setTimeout(() => {
+            currentQIndex++;
+            renderQuestion();
+        }, 1500);
+    }
+
+    function endGame() {
+        player.classList.add('hidden');
+        playClearSound();
+        showScreen('end');
+        document.getElementById('final-score').innerText = score;
+    }
+
+    function saveScore() {
+        const nameInput = document.getElementById('player-name').value.trim();
+        if(!nameInput) {
+            alert("Harap masukkan nama!");
+            return;
+        }
+
+        const newEntry = { 
+            name: nameInput.toUpperCase(), 
+            score: score, 
+            world: currentWorld + 1,
+            date: new Date().toLocaleDateString()
+        };
+
+        // Ambil data dari LocalStorage
+        let leaderboard = JSON.parse(localStorage.getItem('ipaQuizLeaderboard')) || [];
+        leaderboard.push(newEntry);
+        // Urutkan dari skor tertinggi
+        leaderboard.sort((a, b) => b.score - a.score);
+        // Simpan top 100 saja
+        leaderboard = leaderboard.slice(0, 100);
+        
+        localStorage.setItem('ipaQuizLeaderboard', JSON.stringify(leaderboard));
+        
+        showLeaderboard();
+    }
+
+    function showLeaderboard() {
+        showScreen('leaderboard');
+        const tbody = document.getElementById('leaderboard-body');
+        tbody.innerHTML = '';
+        
+        let leaderboard = JSON.parse(localStorage.getItem('ipaQuizLeaderboard')) || [];
+        
+        leaderboard.forEach((entry, i) => {
+            const tr = document.createElement('tr');
+            tr.className = "border-b border-gray-700";
+            let rankColor = i === 0 ? 'text-yellow-400' : (i === 1 ? 'text-gray-300' : (i === 2 ? 'text-yellow-700' : 'text-white'));
+            tr.innerHTML = `
+                <td class="py-2 ${rankColor}">${i+1}. ${entry.name} <span class="text-[8px] text-gray-400 block">W${entry.world} - ${entry.date}</span></td>
+                <td class="py-2 text-right ${rankColor}">${entry.score}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function returnToMenu() {
+        document.getElementById('player-name').value = '';
+        showScreen('menu');
+    }
+
+    // Inisialisasi Audio on first click in document (Browser policy)
+    document.body.addEventListener('click', initAudio, { once: true });
+
+</script>
+</body>
+</html>
